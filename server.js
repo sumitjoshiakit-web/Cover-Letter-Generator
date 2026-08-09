@@ -55,7 +55,7 @@ app.post('/api/extract-resume', upload.single('resume'), async (req, res) => {
     const base64Pdf = req.file.buffer.toString('base64');
 
     const visionResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
