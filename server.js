@@ -1,20 +1,7 @@
 /**
- * Cover Letter Generator — backend server
- * -------------------------------------------------
- * Holds the Gemini API key on the server, loaded from a git-ignored .env file
- * (never inside the HTML/JS the browser downloads). The frontend calls THIS
- * server; this server calls Gemini. Also handles real PDF text extraction
- * for uploaded resumes using pdf-parse (Node-only — can't run in a browser).
- *
- * Setup:
- *   1. npm install
- *   2. Create a file named ".env" (same folder) containing:
- *        GEMINI_API_KEY=your_real_key_here
- *   3. Confirm ".env" is in .gitignore before your first commit.
- *   4. npm start
+ * Cover Letter Generator — Backend Server
+ * Handles Gemini API calls privately and extracts PDF text via pdf-parse & Gemini Vision.
  */
-const API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = 'gemini-3.6-flash';
 
 require('dotenv').config();
 const express = require('express');
@@ -24,25 +11,28 @@ const pdfParse = require('pdf-parse');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // serves index.html + assets
+app.use(express.static(path.join(__dirname, 'public'))); // serves index.html from public/
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
+// Set API key and model variable
 const API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = 'gemini-3.6-flash';
+
 if (!API_KEY) {
-  console.error('Missing GEMINI_API_KEY in .env — server will refuse requests until it is set.');
+  console.error('Missing GEMINI_API_KEY in environment variables — server will refuse requests.');
 }
 
-// Phase 3: Real PDF text extraction + Gemini Vision Fallback for scanned/photo PDFs
+// Phase 3: PDF text extraction endpoint with Gemini Vision fallback
 app.post('/api/extract-resume', upload.single('resume'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
 
   try {
-    // Step A: Attempt fast local text extraction using pdf-parse
+    // Step A: Fast local text extraction using pdf-parse
     const parsed = await pdfParse(req.file.buffer);
     let text = parsed.text ? parsed.text.trim() : '';
 
-    // Step B: If pdf-parse extracted enough text, return it immediately
+    // Step B: Return text if pdf-parse extracted selectable text
     if (text.length >= 30) {
       return res.json({ text });
     }
@@ -50,14 +40,14 @@ app.post('/api/extract-resume', upload.single('resume'), async (req, res) => {
     // Step C: Fallback to Gemini Multimodal/Vision for scanned or photo PDFs
     if (!API_KEY) {
       return res.status(500).json({ 
-        error: 'Scanned PDF detected, but GEMINI_API_KEY is missing on the server.' 
+        error: 'Scanned PDF detected, but GEMINI_API_KEY is missing on the server environment.' 
       });
     }
 
     const base64Pdf = req.file.buffer.toString('base64');
 
     const visionResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,9 +95,10 @@ app.post('/api/extract-resume', upload.single('resume'), async (req, res) => {
   }
 });
 
+// Phase 2: Cover letter generation endpoint
 app.post('/api/generate-letter', async (req, res) => {
   if (!API_KEY) {
-    return res.status(500).json({ error: 'Server is not configured with an API key.' });
+    return res.status(500).json({ error: 'Server is not configured with GEMINI_API_KEY environment variable.' });
   }
 
   const { name, role, company, skills, resumeText } = req.body || {};
@@ -127,8 +118,8 @@ Key skills: ${skills || 'not specified'}`;
   }
 
   try {
-   const upstream = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
+    const upstream = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
