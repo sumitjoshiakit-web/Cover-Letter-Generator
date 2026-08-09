@@ -11,16 +11,20 @@ const pdfParse = require('pdf-parse');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // serves index.html from public/
+app.use(express.static(path.join(__dirname, 'public')));
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024
+  }
+});
 
-// Set API key and model variable
 const API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-3.6-flash';
 
 if (!API_KEY) {
-  console.error('Missing GEMINI_API_KEY in environment variables — server will refuse requests.');
+  console.error('Missing GEMINI_API_KEY in environment variables.');
 }
 
 // Phase 3: PDF text extraction endpoint with Gemini Vision fallback
