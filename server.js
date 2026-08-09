@@ -13,6 +13,8 @@
  *   3. Confirm ".env" is in .gitignore before your first commit.
  *   4. npm start
  */
+const API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = 'gemini-3.6-flash';
 
 require('dotenv').config();
 const express = require('express');
@@ -55,7 +57,7 @@ app.post('/api/extract-resume', upload.single('resume'), async (req, res) => {
     const base64Pdf = req.file.buffer.toString('base64');
 
     const visionResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`,
+  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,7 +128,7 @@ Key skills: ${skills || 'not specified'}`;
 
   try {
    const upstream = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${API_KEY}`,
+  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
