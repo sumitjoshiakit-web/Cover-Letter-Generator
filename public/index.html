@@ -1,1 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cover Letter Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  html{ scroll-behavior:smooth; }
+  :root{
+    --paper:#F5F1E6;
+    --paper-edge:#E8E0CE;
+    --ink:#21263B;
+    --ink-soft:#4B516B;
+    --wax:#A13D2C;
+    --wax-dark:#7E2E20;
+    --stamp:#4A7C6F;
+    --line:#D8CFC0;
+    --console-bg:#171B2A;
+    --console-panel:#1F2438;
+    --console-border:#2E344C;
+    --console-text:#C9CEE0;
+    --console-dim:#7B819C;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--console-bg);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{
+    display:grid;
+    grid-template-columns: minmax(320px, 420px) 1fr;
+    min-height:100vh;
+  }
+  @media (max-width: 860px){
+    .app{ grid-template-columns: 1fr; }
+  }
 
+  /* ===== CONSOLE (input) PANE ===== */
+  .console{
+    background:var(--console-bg);
+    color:var(--console-text);
+    padding:28px 26px 40px;
+    border-right:1px solid var(--console-border);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .console-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:22px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--console-border);
+  }
+  .console-header .brand{
+    font-size:13px;
+    letter-spacing:0.06em;
+    color:var(--console-dim);
+  }
+  .console-header .brand b{ color:#fff; letter-spacing:0.02em; }
+  .mode-toggle{
+    display:flex;
+    background:var(--console-panel);
+    border:1px solid var(--console-border);
+    border-radius:6px;
+    overflow:hidden;
+    font-size:11px;
+  }
+  .mode-toggle button{
+    background:transparent;
+    border:none;
+    color:var(--console-dim);
+    padding:6px 10px;
+    cursor:pointer;
+    font-family:inherit;
+    letter-spacing:0.03em;
+  }
+  .mode-toggle button.active{
+    background:var(--stamp);
+    color:#fff;
+  }
+
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--console-dim);
+    margin-bottom:6px;
+  }
+  .field input, .field textarea{
+    width:100%;
+    background:var(--console-panel);
+    border:1px solid var(--console-border);
+    color:#fff;
+    padding:10px 11px;
+    border-radius:6px;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    resize:vertical;
+  }
+  .field input:focus, .field textarea:focus{
+    outline:2px solid var(--stamp);
+    outline-offset:1px;
+  }
+  .field .hint{ font-size:11px; color:var(--console-dim); margin-top:5px; }
+
+  .section-label{
+    font-size:11px;
+    color:var(--console-dim);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin:22px 0 10px;
+    padding-top:16px;
+    border-top:1px dashed var(--console-border);
+  }
+
+  .dropzone{
+    border:1px dashed var(--console-border);
+    border-radius:8px;
+    padding:14px;
+    text-align:center;
+    font-size:12px;
+    color:var(--console-dim);
+    cursor:pointer;
+    background:var(--console-panel);
+  }
+  .dropzone.drag{ border-color:var(--stamp); color:#fff; }
+  .dropzone input{ display:none; }
+  .resume-status{ font-size:11.5px; color:var(--stamp); margin-top:6px; min-height:14px; }
+
+  .key-box{
+    background:rgba(161,61,44,0.08);
+    border:1px solid rgba(161,61,44,0.35);
+    border-radius:6px;
+    padding:10px 12px;
+    font-size:11.5px;
+    color:#E7B7AC;
+    margin-bottom:14px;
+    line-height:1.5;
+  }
+  .key-box code{ color:#fff; }
+
+  .generate-btn{
+    width:100%;
+    margin-top:8px;
+    background:var(--wax);
+    color:#fff;
+    border:none;
+    padding:13px 16px;
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.02em;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:background .15s ease;
+  }
+  .generate-btn:hover{ background:var(--wax-dark); }
+  .generate-btn:disabled{ background:#5a3a34; cursor:not-allowed; }
+
+  .console-log{
+    margin-top:14px;
+    font-size:11.5px;
+    color:var(--console-dim);
+    min-height:16px;
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+  .console-log .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--console-dim);
+  }
+  .console-log.ok .dot{ background:#5FAE8F; }
+  .console-log.err .dot{ background:var(--wax); }
+  .console-log.busy .dot{ background:#E0B84A; animation:pulse 1s infinite ease-in-out; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* ===== LETTER (output) PANE ===== */
+  .letter-wrap{
+    background:#0f1220;
+    padding:40px 5vw;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+  }
+  .letter{
+    position:relative;
+    background:var(--paper);
+    width:100%;
+    max-width:680px;
+    min-height:640px;
+    padding:56px 54px 50px;
+    border:1px solid var(--paper-edge);
+    box-shadow:0 30px 60px rgba(0,0,0,0.45);
+    font-family:'Source Serif 4', serif;
+  }
+  .letter::before{
+    content:"";
+    position:absolute;
+    inset:14px;
+    border:1px solid rgba(33,38,59,0.08);
+    pointer-events:none;
+  }
+  .letterhead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:34px;
+    padding-bottom:18px;
+    border-bottom:2px solid var(--ink);
+  }
+  .letterhead .name{
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .letterhead .role{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:0.05em;
+    margin-top:4px;
+    text-transform:uppercase;
+  }
+  .letterhead .date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    text-align:right;
+  }
+
+  .postmark{
+    position:absolute;
+    top:40px;
+    right:44px;
+    width:74px;
+    height:74px;
+    border:2px solid var(--stamp);
+    border-radius:50%;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    transform:rotate(-11deg);
+    opacity:0.85;
+  }
+  .postmark.show{ display:flex; }
+  .postmark span{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9px;
+    color:var(--stamp);
+    text-align:center;
+    letter-spacing:0.03em;
+    line-height:1.4;
+  }
+
+  .letter-body{
+    font-size:15.5px;
+    line-height:1.8;
+    color:var(--ink);
+    white-space:pre-wrap;
+  }
+  .letter-body p{ margin:0 0 16px; }
+  .letter-body strong{ color:var(--ink); }
+  .placeholder{
+    color:#9B927E;
+    font-style:italic;
+    font-size:14.5px;
+    line-height:1.8;
+  }
+
+  .skeleton{ margin-top:6px; }
+  .generating-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--stamp); margin-bottom:14px;
+  }
+  .skeleton .bar{
+    height:13px;
+    background:linear-gradient(90deg, #E8E0CE 25%, #F1EBDD 37%, #E8E0CE 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.3s infinite;
+    border-radius:3px;
+    margin-bottom:12px;
+  }
+  @keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+
+  .letter-actions{
+    display:flex;
+    gap:10px;
+    margin-top:32px;
+    padding-top:20px;
+    border-top:1px dashed var(--paper-edge);
+  }
+  .copy-btn{
+    background:transparent;
+    border:1px solid var(--ink);
+    color:var(--ink);
+    padding:9px 16px;
+    border-radius:20px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.03em;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    transition:all .15s ease;
+  }
+  .copy-btn:hover{ background:var(--ink); color:var(--paper); }
+  .copy-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .copy-btn.copied{ background:var(--stamp); border-color:var(--stamp); color:#fff; }
+
+  /* ===== MARKETING CHROME ===== */
+  .site{ background:var(--paper); }
+  .nav{
+    position:sticky; top:0; z-index:20;
+    background:rgba(245,241,230,0.92);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--paper-edge);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 6vw;
+  }
+  .nav .logo{
+    font-family:'Source Serif 4', serif;
+    font-weight:600; font-size:19px; color:var(--ink);
+    display:flex; align-items:center; gap:8px;
+  }
+  .nav .logo .seal{
+    width:20px; height:20px; border:1.5px solid var(--wax); border-radius:50%;
+    display:inline-block; position:relative;
+  }
+  .nav .logo .seal::after{
+    content:""; position:absolute; inset:4px; background:var(--wax); border-radius:50%; opacity:0.7;
+  }
+  .nav-links{ display:flex; gap:28px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft); }
+  .nav-links a{ color:var(--ink-soft); text-decoration:none; letter-spacing:0.02em; }
+  .nav-links a:hover{ color:var(--ink); }
+  .nav-cta{
+    background:var(--ink); color:var(--paper); border:none; padding:9px 18px;
+    border-radius:20px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  @media (max-width:760px){ .nav-links{ display:none; } }
+
+  .hero{
+    padding:88px 6vw 70px;
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:60px; align-items:center;
+    max-width:1240px; margin:0 auto;
+  }
+  @media (max-width:900px){ .hero{ grid-template-columns:1fr; padding:56px 6vw 40px; } }
+  .hero-eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--stamp); margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .hero-eyebrow::before{ content:""; width:20px; height:1px; background:var(--stamp); }
+  .hero h1{
+    font-family:'Source Serif 4', serif; font-size:clamp(34px,4.2vw,54px);
+    line-height:1.08; font-weight:600; color:var(--ink); margin:0 0 22px;
+    letter-spacing:-0.01em;
+  }
+  .hero h1 em{ font-style:italic; color:var(--wax); }
+  .hero p.sub{
+    font-size:17px; line-height:1.65; color:var(--ink-soft); max-width:46ch; margin:0 0 32px;
+  }
+  .hero-actions{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .btn-primary{
+    background:var(--wax); color:#fff; border:none; padding:14px 26px; border-radius:8px;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px; cursor:pointer;
+  }
+  .btn-primary:hover{ background:var(--wax-dark); }
+  .btn-ghost{
+    background:transparent; border:1px solid var(--ink); color:var(--ink); padding:13px 24px;
+    border-radius:8px; font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px; cursor:pointer;
+  }
+  .hero-stats{ display:flex; gap:30px; margin-top:38px; }
+  .hero-stats div{ font-family:'IBM Plex Mono',monospace; }
+  .hero-stats .num{ font-size:22px; color:var(--ink); font-weight:600; }
+  .hero-stats .lbl{ font-size:11px; color:var(--ink-soft); letter-spacing:0.03em; margin-top:2px; }
+
+  .hero-visual{
+    background:var(--ink); border-radius:14px; padding:26px;
+    box-shadow:0 26px 50px rgba(33,38,59,0.28);
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--console-text);
+  }
+  .hero-visual .hv-top{ display:flex; gap:6px; margin-bottom:16px; }
+  .hero-visual .hv-top span{ width:9px; height:9px; border-radius:50%; background:#3A4160; }
+  .hero-visual .hv-line{ margin-bottom:9px; opacity:0.9; }
+  .hero-visual .hv-line b{ color:var(--stamp); }
+  .hero-visual .hv-out{
+    margin-top:14px; background:var(--paper); color:var(--ink); border-radius:8px; padding:16px;
+    font-family:'Source Serif 4',serif; font-size:12.5px; line-height:1.65;
+  }
+
+  .trust-bar{
+    border-top:1px solid var(--paper-edge); border-bottom:1px solid var(--paper-edge);
+    padding:22px 6vw; display:flex; justify-content:center; gap:52px; flex-wrap:wrap;
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft); letter-spacing:0.04em;
+  }
+
+  .features{
+    max-width:1160px; margin:0 auto; padding:80px 6vw 60px;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:34px;
+  }
+  @media (max-width:860px){ .features{ grid-template-columns:1fr; } }
+  .feature .fnum{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--stamp); margin-bottom:12px; letter-spacing:0.05em;
+  }
+  .feature h3{
+    font-family:'Source Serif 4',serif; font-size:19px; margin:0 0 9px; color:var(--ink); font-weight:600;
+  }
+  .feature p{ font-size:14px; line-height:1.65; color:var(--ink-soft); margin:0; }
+
+  .tool-anchor{
+    text-align:center; padding:10px 6vw 46px;
+  }
+  .tool-anchor .kicker{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px;
+  }
+  .tool-anchor h2{
+    font-family:'Source Serif 4',serif; font-size:clamp(26px,3vw,36px); color:var(--ink); margin:0; font-weight:600;
+  }
+
+  .site-footer{
+    background:var(--ink); color:#B9BFD6; padding:44px 6vw 30px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px;
+  }
+  .site-footer .foot-top{
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:24px; padding-bottom:24px;
+    border-bottom:1px solid #333B58; margin-bottom:18px;
+  }
+  .site-footer .foot-brand{ color:#fff; font-family:'Source Serif 4',serif; font-size:16px; }
+  .site-footer .foot-links{ display:flex; gap:26px; }
+  .site-footer .foot-links a{ color:#B9BFD6; text-decoration:none; }
+  .site-footer .foot-links a:hover{ color:#fff; }
+  .site-footer .foot-bottom{
+    display:flex; justify-content:space-between; align-items:center;
+    flex-wrap:wrap; gap:14px;
+    color:#7B819C; font-size:11px;
+  }
+  .foot-social{ display:flex; gap:14px; }
+  .foot-social a{
+    width:30px; height:30px; border-radius:50%;
+    border:1px solid #333B58;
+    display:flex; align-items:center; justify-content:center;
+    color:#B9BFD6; text-decoration:none;
+  }
+  .foot-social a:hover{ border-color:var(--wax); color:#fff; }
+  .foot-social svg{ width:14px; height:14px; fill:currentColor; }
+</style>
+</head>
+<body>
+
+<div class="site">
+
+  <nav class="nav">
+    <div class="logo"><span class="seal"></span> Cover Letter Generator</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#tool">The Tool</a>
+      <a href="#site-footer">About</a>
+    </div>
+    <button class="nav-cta" onclick="document.getElementById('tool').scrollIntoView({behavior:'smooth'})">Try it free</button>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <div class="hero-eyebrow">AI-Assisted Application Writing</div>
+      <h1>Cover letters that read like <em>you</em> wrote them &mdash; in under a minute.</h1>
+      <p class="sub">Give it your role, your skills, and (optionally) your resume. Cover Letter Generator drafts a tailored, professional cover letter you can copy straight into your application &mdash; no generic filler.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="document.getElementById('tool').scrollIntoView({behavior:'smooth'})">Generate a letter →</button>
+        <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See how it works</button>
+      </div>
+      <div class="hero-stats">
+        <div><div class="num">2&ndash;5s</div><div class="lbl">AVG. GENERATION TIME</div></div>
+        <div><div class="num">100%</div><div class="lbl">EDITABLE OUTPUT</div></div>
+        <div><div class="num">$0</div><div class="lbl">FREE-TIER API COST</div></div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hv-top"><span></span><span></span><span></span></div>
+      <div class="hv-line"><b>&gt;</b> role: Frontend Engineer</div>
+      <div class="hv-line"><b>&gt;</b> company: Nimbus Systems</div>
+      <div class="hv-line"><b>&gt;</b> skills: React, TypeScript, REST</div>
+      <div class="hv-line"><b>&gt;</b> status: generating…</div>
+      <div class="hv-out">"Dear Hiring Manager at Nimbus Systems, I'm excited to apply for the Frontend Engineer role&hellip;"</div>
+    </div>
+  </header>
+
+  <div class="trust-bar">
+    <span>NO SIGNUP REQUIRED</span>
+    <span>SECURE BY DESIGN</span>
+    <span>POWERED BY AI</span>
+    <span>FREE TO USE</span>
+  </div>
+
+  <section class="features" id="features">
+    <div class="feature">
+      <div class="fnum">01 / INPUT</div>
+      <h3>Tell it who you are</h3>
+      <p>Name, target role, target company, and your key skills. Optionally drop in your resume and it becomes part of the context.</p>
+    </div>
+    <div class="feature">
+      <div class="fnum">02 / GENERATE</div>
+      <h3>Gemini writes your draft</h3>
+      <p>Your context is sent to our server, which asks Gemini for a genuinely tailored letter &mdash; not a filled-in template.</p>
+    </div>
+    <div class="feature">
+      <div class="fnum">03 / SEND</div>
+      <h3>Copy and apply</h3>
+      <p>One click copies clean, ready-to-paste text &mdash; formatted, no stray markdown, no placeholder brackets left behind.</p>
+    </div>
+  </section>
+
+  <div class="tool-anchor" id="tool">
+    <div class="kicker">The Tool</div>
+    <h2>Fill it in on the left, watch your letter take shape on the right.</h2>
+  </div>
+
+<div class="app">
+
+  <!-- ============ CONSOLE / INPUT PANE ============ -->
+  <div class="console">
+    <div class="console-header">
+      <div class="brand">COVER LETTER GENERATOR <b>// v1.0</b></div>
+      <div class="mode-toggle">
+        <button id="modeDemo" class="active">DEMO(NO AI)</button>
+        <button id="modeLive">LIVE AI</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fName">Candidate Name</label>
+      <input id="fName" type="text" placeholder="Amitab" />
+    </div>
+    <div class="field">
+      <label for="fRole">Job Role</label>
+      <input id="fRole" type="text" placeholder="Frontend Engineer" />
+    </div>
+    <div class="field">
+      <label for="fCompany">Target Company</label>
+      <input id="fCompany" type="text" placeholder="Prodesk IT" />
+    </div>
+    <div class="field">
+      <label for="fSkills">Key Skills <span style="text-transform:none;color:var(--console-dim)">(comma-separated)</span></label>
+      <textarea id="fSkills" rows="2" placeholder="React, JavaScript, REST APIs, HTML, CSS, Tailvind CSS, Vanila JS"></textarea>
+    </div>
+
+    <div class="section-label">Resume &mdash; optional</div>
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="resumeFile" accept=".txt,.md,.pdf" />
+      <div id="dropzoneLabel">Drop your resume here (.pdf, .txt, .md), or click to browse</div>
+    </div>
+    <div class="resume-status" id="resumeStatus"></div>
+    <div class="field" style="margin-top:10px;">
+      <label for="fResumeText">Or paste resume text directly</label>
+      <textarea id="fResumeText" rows="3" placeholder="Paste your resume content here — it's added as context for the generated letter."></textarea>
+    </div>
+
+    <button class="generate-btn" id="generateBtn">✦ Generate Cover Letter</button>
+    <div class="console-log" id="consoleLog"><div class="dot"></div><span>idle</span></div>
+  </div>
+
+  <!-- ============ LETTER / OUTPUT PANE ============ -->
+  <div class="letter-wrap">
+    <div class="letter">
+      <div class="postmark" id="postmark"><span>SENT<br/>&mdash;<br/><span id="postmarkDate"></span></span></div>
+      <div class="letterhead">
+        <div>
+          <div class="name" id="outName">Your Name</div>
+          <div class="role" id="outRole">TARGET ROLE · COMPANY</div>
+        </div>
+        <div class="date" id="outDate"></div>
+      </div>
+
+      <div id="letterBody" class="letter-body">
+        <div class="placeholder">Fill in the form on the left and hit "Generate Cover Letter."
+        In Demo mode the letter is built instantly from a template. In Live API mode it's
+        generated by Gemini using your inputs (and resume, if provided) as context.</div>
+      </div>
+
+      <div class="letter-actions">
+        <button class="copy-btn" id="copyBtn" disabled>⎘ Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  <footer class="site-footer" id="site-footer">
+    <div class="foot-top">
+      <div class="foot-brand">Cover Letter Generator</div>
+      <div class="foot-links">
+        <a href="#tool">The Tool</a>
+        <a href="#features">Features</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Cover Letter Generator · Prodesk IT</span>
+      <div class="foot-social" aria-label="Social links">
+        <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24"><path d="M23 4.9c-.8.4-1.7.6-2.6.8 1-.6 1.7-1.5 2-2.6-.9.5-1.9.9-3 1.1-.9-.9-2.1-1.5-3.4-1.5-2.6 0-4.7 2.1-4.7 4.7 0 .4 0 .7.1 1-3.9-.2-7.4-2.1-9.7-4.9-.4.7-.6 1.5-.6 2.3 0 1.6.8 3.1 2.1 3.9-.7 0-1.4-.2-2-.6v.1c0 2.3 1.6 4.2 3.8 4.6-.4.1-.8.2-1.2.2-.3 0-.6 0-.9-.1.6 1.9 2.3 3.2 4.4 3.3-1.6 1.3-3.6 2-5.8 2-.4 0-.8 0-1.1-.1 2.1 1.3 4.5 2.1 7.1 2.1 8.6 0 13.3-7.1 13.3-13.3v-.6c.9-.7 1.7-1.5 2.3-2.4z"/></svg></a>
+        <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M20.5 2h-17A1.5 1.5 0 0 0 2 3.5v17A1.5 1.5 0 0 0 3.5 22h17a1.5 1.5 0 0 0 1.5-1.5v-17A1.5 1.5 0 0 0 20.5 2zM8 19H5V9h3zM6.5 7.7A1.7 1.7 0 1 1 6.5 4.3a1.7 1.7 0 0 1 0 3.4zM19 19h-3v-4.8c0-1.1 0-2.6-1.6-2.6s-1.9 1.3-1.9 2.5V19h-3V9h2.9v1.3h.1c.4-.8 1.4-1.6 2.9-1.6 3.1 0 3.6 2 3.6 4.7z"/></svg></a>
+        <a href="#" aria-label="GitHub"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.5-1.3.1-2.6 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.3.2 2.3.1 2.6.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7 1 .7 2v3c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg></a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  // Same server serves both this page and the API, so a relative path works
+  // everywhere — locally AND once deployed (Render, Railway, etc.).
+  const BACKEND_URL = '/api/generate-letter';
+
+  const state = {
+    mode: 'demo', // 'demo' | 'live'
+    name:'', role:'', company:'', skills:'',
+    resumeText:'',
+    status:'idle', // idle | busy | ok | err
+    statusMsg:'idle',
+  };
+
+  const $ = id => document.getElementById(id);
+  const fName=$('fName'), fRole=$('fRole'), fCompany=$('fCompany'), fSkills=$('fSkills'), fResumeText=$('fResumeText');
+  const outName=$('outName'), outRole=$('outRole'), outDate=$('outDate');
+  const letterBody=$('letterBody');
+  const generateBtn=$('generateBtn');
+  const copyBtn=$('copyBtn');
+  const consoleLog=$('consoleLog');
+  const postmark=$('postmark'), postmarkDate=$('postmarkDate');
+  const dropzone=$('dropzone'), resumeFile=$('resumeFile'), resumeStatus=$('resumeStatus');
+  const modeDemo=$('modeDemo'), modeLive=$('modeLive');
+
+  // ---- live preview of header fields as user types ----
+  function syncHeader(){
+    outName.textContent = fName.value.trim() || 'Your Name';
+    outRole.textContent = (fRole.value.trim() || 'TARGET ROLE') + ' · ' + (fCompany.value.trim() || 'COMPANY');
+    outDate.textContent = new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+  }
+  [fName,fRole,fCompany].forEach(el=>el.addEventListener('input', syncHeader));
+  syncHeader();
+
+  // ---- mode toggle (Demo runs entirely offline; Live calls the AI) ----
+  modeDemo.addEventListener('click', ()=>{
+    state.mode='demo';
+    modeDemo.classList.add('active'); modeLive.classList.remove('active');
+    generateBtn.textContent='✦ Generate Cover Letter';
+  });
+  modeLive.addEventListener('click', ()=>{
+    state.mode='live';
+    modeLive.classList.add('active'); modeDemo.classList.remove('active');
+    generateBtn.textContent='✦ Generate with AI';
+  });
+
+  // ---- resume upload & extraction ----
+  dropzone.addEventListener('click', ()=>resumeFile.click());
+  ['dragover','dragleave','drop'].forEach(evt=>{
+    dropzone.addEventListener(evt, e=>{
+      e.preventDefault();
+      dropzone.classList.toggle('drag', evt==='dragover');
+    });
+  });
+  dropzone.addEventListener('drop', e=>{
+    if(e.dataTransfer.files.length) handleResumeFile(e.dataTransfer.files[0]);
+  });
+  resumeFile.addEventListener('change', e=>{
+    if(e.target.files.length) handleResumeFile(e.target.files[0]);
+  });
+
+  async function handleResumeFile(file){
+    const isTextLike = /\.(txt|md)$/i.test(file.name);
+    const isPdf = /\.pdf$/i.test(file.name);
+
+    if(isTextLike){
+      const reader = new FileReader();
+      reader.onload = () => {
+        fResumeText.value = reader.result;
+        resumeStatus.style.color = 'var(--stamp)';
+        resumeStatus.textContent = `Loaded "${file.name}" — ${reader.result.length} characters added.`;
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    if(isPdf){
+      resumeStatus.style.color = 'var(--console-dim)';
+      resumeStatus.textContent = `Extracting text from "${file.name}"…`;
+      try{
+        const form = new FormData();
+        form.append('resume', file);
+        const res = await fetch('/api/extract-resume', { method:'POST', body: form });
+        const data = await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data.error || 'Extraction failed.');
+        fResumeText.value = data.text || '';
+        resumeStatus.style.color = 'var(--stamp)';
+        resumeStatus.textContent = `Loaded "${file.name}" — ${(data.text||'').length} characters extracted.`;
+      }catch(err){
+        resumeStatus.style.color = '#E0B84A';
+        resumeStatus.textContent = `Couldn't extract "${file.name}": ${err.message}`;
+      }
+      return;
+    }
+
+    resumeStatus.style.color = '#E0B84A';
+    resumeStatus.textContent = `Unsupported file type. Use .pdf, .txt, or .md.`;
+  }
+
+  // ---- console status helper ----
+  function setStatus(kind, msg){
+    consoleLog.className = 'console-log' + (kind ? ' '+kind : '');
+    consoleLog.innerHTML = `<div class="dot"></div><span>${msg}</span>`;
+  }
+
+  // ---- Phase 1: hardcoded template interpolation ----
+  function buildDemoLetter(s){
+    const skillsList = s.skills.split(',').map(x=>x.trim()).filter(Boolean);
+    const skillsPhrase = skillsList.length
+      ? skillsList.slice(0,-1).join(', ') + (skillsList.length>1 ? `, and ${skillsList[skillsList.length-1]}` : skillsList[0])
+      : 'a strong, adaptable skill set';
+    const resumeNote = s.resumeText.trim()
+      ? `\n\nHaving reviewed my background further, you'll see a track record that directly supports this application.`
+      : '';
+
+    return `Dear Hiring Manager at ${s.company || '[Company]'},
+
+I am ${s.name || '[Candidate Name]'}, and I am writing to express my interest in the ${s.role || '[Job Role]'} position at ${s.company || '[Company]'}. My background includes hands-on experience with ${skillsPhrase}, which I believe aligns well with what your team is looking for.
+
+I'm particularly drawn to ${s.company || 'your company'}'s work and would welcome the opportunity to contribute my skills toward your team's goals. I'm confident that my technical foundation and eagerness to learn make me a strong fit for this role.${resumeNote}
+
+Thank you for considering my application. I look forward to the opportunity to discuss how I can contribute to ${s.company || 'your team'}.
+
+Sincerely,
+${s.name || '[Candidate Name]'}`;
+  }
+
+  // ---- Phase 2: prompt construction for the LLM ----
+  function buildPrompt(s){
+    let prompt = `You are an expert career coach. Write a concise, professional, warm cover letter (under 320 words) for the following candidate. Do not use placeholder brackets — write it as a finished letter ready to send. Use markdown paragraphs separated by blank lines.
+
+Candidate name: ${s.name}
+Target role: ${s.role}
+Target company: ${s.company}
+Key skills: ${s.skills}`;
+    if(s.resumeText.trim()){
+      prompt += `\n\nAdditional context extracted from the candidate's resume (use relevant details, don't just repeat verbatim):\n${s.resumeText.trim().slice(0,4000)}`;
+    }
+    return prompt;
+  }
+
+  // Minimal markdown -> HTML paragraph cleanup (Phase 3 requirement)
+  function markdownToParagraphs(md){
+    const escaped = md
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const bolded = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return bolded
+      .split(/\n\s*\n/)
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(p => `<p>${p.replace(/\n/g,'<br/>')}</p>`)
+      .join('');
+  }
+
+  function renderSkeleton(){
+    letterBody.innerHTML = `<div class="generating-label">Generating…</div><div class="skeleton">
+      <div class="bar" style="width:92%"></div>
+      <div class="bar" style="width:100%"></div>
+      <div class="bar" style="width:78%"></div>
+      <div class="bar" style="width:96%"></div>
+      <div class="bar" style="width:64%"></div>
+    </div>`;
+  }
+
+  function renderPlainLetter(text){
+    letterBody.innerHTML = '';
+    letterBody.classList.remove('placeholder-mode');
+    const p = document.createElement('div');
+    p.textContent = text; // plain text template, preserve via CSS white-space:pre-wrap
+    letterBody.appendChild(p);
+  }
+
+  function renderMarkdownLetter(md){
+    letterBody.innerHTML = markdownToParagraphs(md);
+  }
+
+  function showPostmark(){
+    postmarkDate.textContent = new Date().toLocaleDateString(undefined,{month:'short', day:'numeric'});
+    postmark.classList.add('show');
+  }
+
+  // ---- Phase 2: live generation, routed through OUR backend (server.js) ----
+  // The browser never sees the Gemini key. It only ever talks to our own
+  // /api/generate-letter route, which holds the key privately server-side.
+  async function callGemini(s){
+    const res = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: s.name, role: s.role, company: s.company,
+        skills: s.skills, resumeText: s.resumeText
+      })
+    });
+    const data = await res.json().catch(()=> ({}));
+    if(!res.ok){
+      throw new Error(data.error || `Server error (${res.status}). Is the backend running? (node server.js)`);
+    }
+    if(!data.letter) throw new Error('Server returned an empty letter.');
+    return data.letter;
+  }
+
+  // ---- generate button ----
+  generateBtn.addEventListener('click', async ()=>{
+    state.name = fName.value.trim();
+    state.role = fRole.value.trim();
+    state.company = fCompany.value.trim();
+    state.skills = fSkills.value.trim();
+    state.resumeText = fResumeText.value;
+
+    if(!state.name || !state.role || !state.company){
+      setStatus('err', 'Please fill in Name, Role, and Company first.');
+      return;
+    }
+
+    copyBtn.disabled = true;
+    copyBtn.classList.remove('copied');
+    copyBtn.textContent = '⎘ Copy to Clipboard';
+    postmark.classList.remove('show');
+
+    if(state.mode === 'demo'){
+      setStatus('busy', 'building from template…');
+      generateBtn.disabled = true;
+      renderSkeleton();
+      await new Promise(r=>setTimeout(r, 400)); // brief pause so the state is visible
+      const letter = buildDemoLetter(state);
+      renderPlainLetter(letter);
+      copyBtn.dataset.text = letter;
+      copyBtn.disabled = false;
+      showPostmark();
+      setStatus('ok', 'demo letter generated');
+      generateBtn.disabled = false;
+      return;
+    }
+
+    setStatus('busy', 'Generating…');
+    generateBtn.disabled = true;
+    renderSkeleton();
+    const start = Date.now();
+    try{
+      const raw = await callGemini(state);
+      renderMarkdownLetter(raw);
+      copyBtn.dataset.text = raw.replace(/\*\*/g,'');
+      copyBtn.disabled = false;
+      showPostmark();
+      setStatus('ok', `generated in ${((Date.now()-start)/1000).toFixed(1)}s`);
+    }catch(err){
+      letterBody.innerHTML = `<div class="placeholder">Couldn't generate: ${err.message}</div>`;
+      setStatus('err', err.message.slice(0,90));
+    } finally {
+      generateBtn.disabled = false;
+    }
+  });
+
+  // ---- copy to clipboard ----
+  copyBtn.addEventListener('click', async ()=>{
+    const text = copyBtn.dataset.text || letterBody.textContent;
+    try{
+      await navigator.clipboard.writeText(text);
+      copyBtn.classList.add('copied');
+      copyBtn.textContent = '✓ Copied';
+      setTimeout(()=>{ copyBtn.classList.remove('copied'); copyBtn.textContent='⎘ Copy to Clipboard'; }, 1600);
+    }catch(e){
+      copyBtn.textContent = 'Copy failed — select manually';
+    }
+  });
+})();
+</script>
+</body>
+</html>
